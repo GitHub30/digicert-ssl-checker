@@ -50,7 +50,7 @@ app.get('/', async (req, res) => {
 
   } catch (error) {
     console.error(error)
-    res.status(500).json(error instanceof Error ? { message: error.message, stack: error.stack } : { error })
+    res.status(500).json(error instanceof Error ? { message: error.message, stack: error.stack } : error)
   } finally {
     if (browser) {
       await browser.close()
