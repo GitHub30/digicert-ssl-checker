@@ -1,0 +1,1 @@
+# digicert-ssl-checker
