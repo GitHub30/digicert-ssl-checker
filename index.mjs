@@ -32,13 +32,13 @@ app.get('/', async (req, res) => {
       return res.status(404).send('Element .container not found')
     }
 
-    const results = await page.$('.results')
+    const results = await page.$('#results')
     if (!results) {
-      return res.status(404).send('Element .results not found')
+      return res.status(404).send('Element #results not found')
     }
 
     const screenshot = await container.screenshot({ encoding: 'base64' })
-    const html = await page.$eval('.results', (el) => el.innerHTML)
+    const html = await page.$eval('#results', (el) => el.innerHTML)
 
     res.json({
       url: 'data:image/png;base64,' + screenshot,
