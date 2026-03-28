@@ -47,7 +47,7 @@ app.get('/', async (req, res) => {
 
   } catch (error) {
     console.error(error)
-    res.status(500).send('Error generating screenshot')
+    res.status(500).send(error.message)
   } finally {
     if (browser) {
       await browser.close()
