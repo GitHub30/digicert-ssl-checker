@@ -31,11 +31,19 @@ app.get('/', async (req, res) => {
     if (!container) {
       return res.status(404).send('Element .container not found')
     }
-    const screenshotBase64 = await container.screenshot({ encoding: 'base64' })
-    const screenshotDataUrl = `data:image/pngbase64,${screenshotBase64}`
 
-    res.type('text/plain')
-    res.send(screenshotDataUrl)
+    const results = await page.$('.results')
+    if (!results) {
+      return res.status(404).send('Element .results not found')
+    }
+
+    const screenshot = await container.screenshot({ encoding: 'base64' })
+    const html = await page.$eval('.results', (el) => el.innerHTML)
+
+    res.json({
+      url: 'data:image/png;base64,' + screenshot,
+      html
+    })
 
   } catch (error) {
     console.error(error)
