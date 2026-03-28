@@ -32,12 +32,12 @@ app.get('/', async (req, res) => {
     await page.addStyleTag({ content: 'header, #transcend-consent-manager { display: none !important }' })
     const container = await page.$('.container')
     if (!container) {
-      return res.status(404).send('Element .container not found')
+      return res.status(404).json({ error: 'Element .container not found', html: await page.content() })
     }
 
     const results = await page.$('#results')
     if (!results) {
-      return res.status(404).send('Element #results not found')
+      return res.status(404).json({ error: 'Element #results not found', html: await page.content() })
     }
 
     const screenshot = await container.screenshot({ encoding: 'base64' })
@@ -50,7 +50,7 @@ app.get('/', async (req, res) => {
 
   } catch (error) {
     console.error(error)
-    res.status(500).send(error.message)
+    res.status(500).json(error)
   } finally {
     if (browser) {
       await browser.close()
