@@ -29,7 +29,7 @@ app.use((req, res, next) => {
 app.get('/', async (req, res) => {
   const host = req.query.host
   if (!host) {
-    return res.status(404).end()
+    return res.sendStatus(204)
   }
 
   const page = await getBrowser().then(b => b.newPage())
