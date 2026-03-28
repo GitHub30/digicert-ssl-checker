@@ -28,7 +28,7 @@ app.get('/', async (req, res) => {
     })
     const page = await browser.newPage()
     page.setUserAgent({ userAgent: 'Mozilla/5.0 (Windows NT 10.0 Win64 x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36' })
-    await page.goto('https://www.digicert.com/help/?' + new URLSearchParams({ host }), { waitUntil: 'networkidle2', timeout: 10000 })
+    await page.goto('https://www.digicert.com/help/?' + new URLSearchParams({ host }), { waitUntil: 'networkidle0', timeout: 30000 })
     await page.addStyleTag({ content: 'header, #transcend-consent-manager { display: none !important }' })
     const container = await page.$('.container')
     if (!container) {
