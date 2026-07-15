@@ -125,11 +125,25 @@
         <script>
             const host = new URL(location).searchParams.get('host')
             if (host) {
-                fetch('example.com.txt').then(r => r.text()).then(html => {
-                    const base = document.head.appendChild(document.createElement('base'))
-                    base.href = 'https://www.digicert.com/help/'
-                    document.body.shadowRoot.getElementById('results').innerHTML = html
-                })
+                if (host === 'example.com') {
+                    fetch('example.com.txt').then(r => r.text()).then(html => {
+                        const base = document.head.appendChild(document.createElement('base'))
+                        base.href = 'https://www.digicert.com/help/'
+                        document.body.shadowRoot.getElementById('results').innerHTML = html
+                    })
+                } else {
+                    fetch('https://cors.7t.workers.dev/https://www.digicert.com/api/check-host.php', {
+                        headers: {
+                            'content-type': 'application/x-www-form-urlencoded',
+                        },
+                        body: 'host=' + host,
+                        method: 'POST'
+                    }).then(r => r.text()).then(html => {
+                        const base = document.head.appendChild(document.createElement('base'))
+                        base.href = 'https://www.digicert.com/help/'
+                        document.body.shadowRoot.getElementById('results').innerHTML = html
+                    })
+                }
             }
         </script>
     </template>
