@@ -3,18 +3,129 @@
 
 <body>
     <template shadowrootmode="open">
+        <style>
+            * {
+                box-sizing: border-box;
+            }
+
+            div#results,
+            div#results p,
+            div#results pre,
+            div#results h2 {
+                font-family: UbuntuLight, Arial;
+            }
+
+            div#results {
+                background: #FFF;
+                border: 2px solid #999;
+                border-radius: 12px;
+                padding: 24px 55px;
+                font-size: 13px;
+                color: #000;
+                width: 700px;
+                margin-bottom: 48px;
+            }
+
+            div#results p {
+                font-size: 12px;
+                color: #000;
+            }
+
+            div#results h2 {
+                margin-left: -35px;
+                padding-left: 35px;
+                margin-bottom: 1em;
+                font-weight: normal;
+            }
+
+            div#results h2.ok {
+                background: url(https://www.digicert.com/kb/images/icons/result-ok.gif) no-repeat 0 center;
+                color: #007EC4;
+            }
+
+            div#results h2.warning {
+                background: url(https://www.digicert.com/kb/images/icons/result-warning.gif) no-repeat 0 center;
+                color: #550;
+            }
+
+            div#results h2.error {
+                background: url(https://www.digicert.com/kb/images/icons/result-error.gif) no-repeat 0 center;
+                color: #500;
+            }
+
+            td.ok {
+                background: url(https://www.digicert.com/kb/images/icons/result-ok.gif) no-repeat 0 center;
+                color: #007EC4;
+            }
+
+            td.error {
+                background: url(https://www.digicert.com/kb/images/icons/result-error.gif) no-repeat 0 center;
+                color: #500;
+            }
+
+            div#results h1 {
+                color: #000;
+                font-weight: bold;
+                margin-bottom: 1em;
+                margin-left: -35px;
+                padding-left: 35px;
+                border-bottom: 2px solid #999;
+            }
+
+            div#chain table tr td {
+                color: #000;
+                font-size: 14px;
+            }
+
+            span.evca1 {
+                color: green
+            }
+
+            span.evroot {
+                color: blue
+            }
+
+            span.essca {
+                color: black
+            }
+
+            input.big {
+                font-size: 20px;
+                font-weight: bold;
+                width: 450px;
+                padding: 6px;
+                color: #000;
+            }
+
+            table td {
+                vertical-align: top;
+                padding: 5px;
+            }
+
+            div#CertDetails {
+                margin: 0 0 1em 15px;
+            }
+
+            div#CertDetails p {
+                font-family: Courier, "Courier New", sans-serif;
+                font-size: 12px;
+                text-indent: -15px;
+                margin: 0;
+            }
+        </style>
         <div id="results"></div>
+        <script>
+            const host = new URL(location).searchParams.get('host')
+            if (host) {
+                fetch('example.com.txt').then(r => r.text()).then(html => {
+                    const base = document.head.appendChild(document.createElement('base'))
+                    base.href = 'https://www.digicert.com/help/'
+                    document.body.shadowRoot.getElementById('results').innerHTML = html
+                })
+            }
+        </script>
     </template>
-    <script>
-        const host = new URL(location).searchParams.get('host')
-        if (host) {
-            fetch('example.com.txt').then(r => r.text()).then(html => {
-                const base = document.head.appendChild(document.createElement('base'))
-                base.href = 'https://www.digicert.com/help/'
-                document.body.shadowRoot.getElementById('results').innerHTML = html
-            })
-        }
-    </script>
+
 </body>
 
 </html>
