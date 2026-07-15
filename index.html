@@ -1,3 +1,20 @@
-<template shadowrootmode="open">
-    <div id="results"></div>
-</template>
+<!DOCTYPE html>
+<html>
+
+<body>
+    <template shadowrootmode="open">
+        <div id="results"></div>
+    </template>
+    <script>
+        const host = new URL(location).searchParams.get('host')
+        if (host) {
+            fetch('example.com.txt').then(r => r.text()).then(html => {
+                const base = document.head.appendChild(document.createElement('base'))
+                base.href = 'https://www.digicert.com/help/'
+                document.body.shadowRoot.getElementById('results').innerHTML = html
+            })
+        }
+    </script>
+</body>
+
+</html>
