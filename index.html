@@ -119,19 +119,9 @@
         <script>
             const host = new URL(location).searchParams.get('host')
             if (host) {
-                document.body.shadowRoot.getElementById('results').innerHTML = 'loading...'
-                const handle = r => r.text().then(html => document.body.shadowRoot.getElementById('results').innerHTML = html)
-                if (host === 'example.com') {
-                    fetch('https://gist.githubusercontent.com/GitHub30/abeb1cc6c4fcf51b93ce51de37fccf41/raw/example.com.html').then(handle)
-                } else {
-                    fetch('https://cors.7t.workers.dev/https://www.digicert.com/api/check-host.php', {
-                        method: 'POST',
-                        headers: {
-                            'content-type': 'application/x-www-form-urlencoded',
-                        },
-                        body: 'host=' + host
-                    }).then(handle)
-                }
+                fetch('https://digicert.8j.workers.dev/?host=' + host)
+                    .then(r => r.text())
+                    .then(html => document.body.shadowRoot.getElementById('results').innerHTML = html)
             }
         </script>
     </template>
