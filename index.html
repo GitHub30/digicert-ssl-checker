@@ -2,10 +2,11 @@
 <html>
 
 <body>
+    <base href="https://www.digicert.com/help/">
     <style>
         @font-face {
             font-family: 'UbuntuLight';
-            src: url('https://www.digicert.com/kb/css/fonts/Ubuntu-L.ttf?ff');
+            src: url('/kb/css/fonts/Ubuntu-L.ttf?ff');
             font-weight: normal;
             font-style: normal
         }
@@ -47,27 +48,27 @@
             }
 
             div#results h2.ok {
-                background: url(https://www.digicert.com/kb/images/icons/result-ok.gif) no-repeat 0 center;
+                background: url(/kb/images/icons/result-ok.gif) no-repeat 0 center;
                 color: #007EC4;
             }
 
             div#results h2.warning {
-                background: url(https://www.digicert.com/kb/images/icons/result-warning.gif) no-repeat 0 center;
+                background: url(/kb/images/icons/result-warning.gif) no-repeat 0 center;
                 color: #550;
             }
 
             div#results h2.error {
-                background: url(https://www.digicert.com/kb/images/icons/result-error.gif) no-repeat 0 center;
+                background: url(/kb/images/icons/result-error.gif) no-repeat 0 center;
                 color: #500;
             }
 
             td.ok {
-                background: url(https://www.digicert.com/kb/images/icons/result-ok.gif) no-repeat 0 center;
+                background: url(/kb/images/icons/result-ok.gif) no-repeat 0 center;
                 color: #007EC4;
             }
 
             td.error {
-                background: url(https://www.digicert.com/kb/images/icons/result-error.gif) no-repeat 0 center;
+                background: url(/kb/images/icons/result-error.gif) no-repeat 0 center;
                 color: #500;
             }
 
@@ -125,25 +126,18 @@
         <script>
             const host = new URL(location).searchParams.get('host')
             if (host) {
+                document.body.shadowRoot.getElementById('results').innerHTML = 'loading...'
+                const handleResponse = response => response.text().then(html => document.body.shadowRoot.getElementById('results').innerHTML = html)
                 if (host === 'example.com') {
-                    fetch('example.com.txt').then(r => r.text()).then(html => {
-                        const base = document.head.appendChild(document.createElement('base'))
-                        base.href = 'https://www.digicert.com/help/'
-                        document.body.shadowRoot.getElementById('results').innerHTML = html
-                    })
+                    fetch('https://gist.githubusercontent.com/GitHub30/abeb1cc6c4fcf51b93ce51de37fccf41/raw/example.com.html').then(handleResponse)
                 } else {
-                    document.body.shadowRoot.getElementById('results').innerHTML = 'loading...'
                     fetch('https://cors.7t.workers.dev/https://www.digicert.com/api/check-host.php', {
+                        method: 'POST',
                         headers: {
                             'content-type': 'application/x-www-form-urlencoded',
                         },
-                        body: 'host=' + host,
-                        method: 'POST'
-                    }).then(r => r.text()).then(html => {
-                        const base = document.head.appendChild(document.createElement('base'))
-                        base.href = 'https://www.digicert.com/help/'
-                        document.body.shadowRoot.getElementById('results').innerHTML = html
-                    })
+                        body: 'host=' + host
+                    }).then(handleResponse)
                 }
             }
         </script>
