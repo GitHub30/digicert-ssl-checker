@@ -16,11 +16,8 @@
                 box-sizing: border-box;
             }
 
-            div#results,
-            div#results p,
-            div#results pre,
-            div#results h2 {
-                font-family: UbuntuLight, Arial;
+            img {
+                vertical-align: middle;
             }
 
             div#results {
@@ -35,11 +32,20 @@
                 background: #FFF;
             }
 
-            div#results p {
-                margin: 0 0 10px;
-                font-size: 12px;
-                line-height: 1.4;
+            div#results,
+            div#results p,
+            div#results pre,
+            div#results h2 {
+                font-family: UbuntuLight, Arial;
+            }
+
+            div#results h1 {
                 color: #000;
+                font-weight: bold;
+                margin-bottom: 1em;
+                margin-left: -35px;
+                padding-left: 35px;
+                border-bottom: 2px solid #999;
             }
 
             div#results h2 {
@@ -67,6 +73,13 @@
                 color: #500;
             }
 
+            div#results p {
+                margin: 0 0 10px;
+                font-size: 12px;
+                line-height: 1.4;
+                color: #000;
+            }
+
             td.ok {
                 background: url(/kb/images/icons/result-ok.gif) no-repeat 0 center;
                 color: #007EC4;
@@ -75,15 +88,6 @@
             td.error {
                 background: url(/kb/images/icons/result-error.gif) no-repeat 0 center;
                 color: #500;
-            }
-
-            div#results h1 {
-                color: #000;
-                font-weight: bold;
-                margin-bottom: 1em;
-                margin-left: -35px;
-                padding-left: 35px;
-                border-bottom: 2px solid #999;
             }
 
             div#chain table tr td {
@@ -109,10 +113,6 @@
                 font-size: 12px;
                 text-indent: -15px;
                 margin: 0;
-            }
-
-            img {
-                vertical-align: middle;
             }
         </style>
         <div id="results"></div>
