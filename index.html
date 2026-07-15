@@ -132,6 +132,7 @@
                         document.body.shadowRoot.getElementById('results').innerHTML = html
                     })
                 } else {
+                    document.body.shadowRoot.getElementById('results').innerHTML = 'loading...'
                     fetch('https://cors.7t.workers.dev/https://www.digicert.com/api/check-host.php', {
                         headers: {
                             'content-type': 'application/x-www-form-urlencoded',
