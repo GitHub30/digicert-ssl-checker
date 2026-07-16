@@ -1,129 +1,128 @@
 <!DOCTYPE html>
 
-<body>
-    <base href="https://www.digicert.com/help/">
+<head>
+    <base href="https://digicert-cors.8j.workers.dev/">
     <style>
         @font-face {
             font-family: 'UbuntuLight';
-            src: url('/kb/css/fonts/Ubuntu-L.ttf?ff');
+            src: url(https://digicert-cors.8j.workers.dev/kb/css/fonts/Ubuntu-L.ttf);
             font-weight: normal;
             font-style: normal
         }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        img {
+            vertical-align: middle;
+        }
+
+        div#results {
+            margin-bottom: 48px;
+            border: 2px solid #999;
+            border-radius: 12px;
+            padding: 24px 55px;
+            width: 700px;
+            line-height: 1.42857;
+            font-size: 13px;
+            color: #000;
+            background: #FFF;
+        }
+
+        div#results,
+        div#results p,
+        div#results pre,
+        div#results h2 {
+            font-family: UbuntuLight, Arial;
+        }
+
+        div#results h1 {
+            color: #000;
+            font-weight: bold;
+            margin-bottom: 1em;
+            margin-left: -35px;
+            padding-left: 35px;
+            border-bottom: 2px solid #999;
+        }
+
+        div#results h2 {
+            margin-top: 20px;
+            margin-bottom: 1em;
+            margin-left: -35px;
+            padding-left: 35px;
+            line-height: 1.1;
+            font-size: 22px;
+            font-weight: normal;
+        }
+
+        div#results h2.ok {
+            background: url(https://digicert-cors.8j.workers.dev/kb/images/icons/result-ok.gif) no-repeat 0 center;
+            color: #007EC4;
+        }
+
+        div#results h2.warning {
+            background: url(https://digicert-cors.8j.workers.dev/kb/images/icons/result-warning.gif) no-repeat 0 center;
+            color: #550;
+        }
+
+        div#results h2.error {
+            background: url(https://digicert-cors.8j.workers.dev/kb/images/icons/result-error.gif) no-repeat 0 center;
+            color: #500;
+        }
+
+        div#results p {
+            margin: 0 0 10px;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #000;
+        }
+
+        td.ok {
+            background: url(/kb/images/icons/result-ok.gif) no-repeat 0 center;
+            color: #007EC4;
+        }
+
+        td.error {
+            background: url(/kb/images/icons/result-error.gif) no-repeat 0 center;
+            color: #500;
+        }
+
+        div#chain table tr td {
+            color: #000;
+            font-size: 14px;
+        }
+
+        table {
+            border-spacing: 0;
+        }
+
+        table td {
+            vertical-align: top;
+            padding: 5px;
+        }
+
+        div#CertDetails {
+            margin: 0 0 1em 15px;
+        }
+
+        div#CertDetails p {
+            font-family: Courier, "Courier New", sans-serif;
+            font-size: 12px;
+            text-indent: -15px;
+            margin: 0;
+        }
     </style>
-    <template shadowrootmode="open">
-        <style>
-            * {
-                box-sizing: border-box;
-            }
+</head>
 
-            img {
-                vertical-align: middle;
-            }
-
-            div#results {
-                margin-bottom: 48px;
-                border: 2px solid #999;
-                border-radius: 12px;
-                padding: 24px 55px;
-                width: 700px;
-                line-height: 1.42857;
-                font-size: 13px;
-                color: #000;
-                background: #FFF;
-            }
-
-            div#results,
-            div#results p,
-            div#results pre,
-            div#results h2 {
-                font-family: UbuntuLight, Arial;
-            }
-
-            div#results h1 {
-                color: #000;
-                font-weight: bold;
-                margin-bottom: 1em;
-                margin-left: -35px;
-                padding-left: 35px;
-                border-bottom: 2px solid #999;
-            }
-
-            div#results h2 {
-                margin-top: 20px;
-                margin-bottom: 1em;
-                margin-left: -35px;
-                padding-left: 35px;
-                line-height: 1.1;
-                font-size: 22px;
-                font-weight: normal;
-            }
-
-            div#results h2.ok {
-                background: url(/kb/images/icons/result-ok.gif) no-repeat 0 center;
-                color: #007EC4;
-            }
-
-            div#results h2.warning {
-                background: url(/kb/images/icons/result-warning.gif) no-repeat 0 center;
-                color: #550;
-            }
-
-            div#results h2.error {
-                background: url(/kb/images/icons/result-error.gif) no-repeat 0 center;
-                color: #500;
-            }
-
-            div#results p {
-                margin: 0 0 10px;
-                font-size: 12px;
-                line-height: 1.4;
-                color: #000;
-            }
-
-            td.ok {
-                background: url(/kb/images/icons/result-ok.gif) no-repeat 0 center;
-                color: #007EC4;
-            }
-
-            td.error {
-                background: url(/kb/images/icons/result-error.gif) no-repeat 0 center;
-                color: #500;
-            }
-
-            div#chain table tr td {
-                color: #000;
-                font-size: 14px;
-            }
-
-            table {
-                border-spacing: 0;
-            }
-
-            table td {
-                vertical-align: top;
-                padding: 5px;
-            }
-
-            div#CertDetails {
-                margin: 0 0 1em 15px;
-            }
-
-            div#CertDetails p {
-                font-family: Courier, "Courier New", sans-serif;
-                font-size: 12px;
-                text-indent: -15px;
-                margin: 0;
-            }
-        </style>
-        <div id="results"></div>
-        <script>
-            const host = new URL(location).searchParams.get('host')
-            if (host) {
-                fetch('https://digicert.8j.workers.dev/?host=' + host)
-                    .then(r => r.text())
-                    .then(html => document.body.shadowRoot.getElementById('results').innerHTML = html)
-            }
-        </script>
-    </template>
-
+<body>
+    <div id="results"></div>
+    <script>
+        const host = new URL(location).searchParams.get('host')
+        if (host) {
+            fetch('https://digicert.8j.workers.dev/?host=' + host)
+                .then(r => r.text())
+                .then(html => results.innerHTML = html)
+        }
+    </script>
 </body>
