@@ -1,4 +1,5 @@
 <?php
+// Usage: php -d extension=openssl check-host.php
 
 $host = $_GET['host'] ?? 'example.com';
 
