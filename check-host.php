@@ -120,6 +120,10 @@ function get_crl_status(array $params): string
         return 'Not Enabled';
     }
 
+    if (!is_array($leaf)) {
+        $leaf = openssl_x509_parse($leaf) ?: [];
+    }
+
     $serialHex = $leaf['serialNumberHex'] ?? (isset($leaf['serialNumber']) ? strtoupper(dechex((int) $leaf['serialNumber'])) : '');
     if ($serialHex === '') {
         return 'Not Enabled';
@@ -136,43 +140,93 @@ function get_crl_status(array $params): string
     }
 
     $maxBytes = 8 * 1024 * 1024; // 8MB limit
+    $cacheDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'crl_cache';
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0755, true);
+    }
 
     foreach ($urls as $url) {
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS      => 3,
-            CURLOPT_TIMEOUT        => 8,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
-            CURLOPT_USERAGENT      => 'Mozilla/5.0',
-        ]);
-        $data = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . md5($url) . '.cache';
+        $output = false;
 
-        if ($data === false || $httpCode !== 200 || strlen($data) >= $maxBytes) {
-            continue;
+        if (file_exists($cacheFile)) {
+            $content = file_get_contents($cacheFile);
+            if ($content !== false) {
+                $pos = strpos($content, "\n");
+                if ($pos !== false) {
+                    $expireTimestamp = (int) substr($content, 0, $pos);
+                    if ($expireTimestamp > time()) {
+                        $output = substr($content, $pos + 1);
+                    }
+                }
+            }
         }
 
-        $tmp = tempnam(sys_get_temp_dir(), 'crl_');
-        if ($tmp === false) {
-            continue;
-        }
-        file_put_contents($tmp, $data);
+        if ($output === false) {
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_MAXREDIRS      => 3,
+                CURLOPT_TIMEOUT        => 8,
+                CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_USERAGENT      => 'Mozilla/5.0',
+            ]);
+            $data = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 
-        $output = shell_exec('openssl crl -inform DER -in ' . escapeshellarg($tmp) . ' -noout -text');
-        if (!$output) {
-            $output = shell_exec('openssl crl -inform PEM -in ' . escapeshellarg($tmp) . ' -noout -text');
-        }
-        @unlink($tmp);
+            if ($data === false || $httpCode !== 200 || strlen($data) >= $maxBytes) {
+                continue;
+            }
 
-        if (!$output) {
-            continue;
+            $tmp = tempnam(sys_get_temp_dir(), 'crl_');
+            if ($tmp === false) {
+                continue;
+            }
+            file_put_contents($tmp, $data);
+
+            $opensslCmd = 'openssl';
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                if (file_exists('C:\\Program Files\\Git\\usr\\bin\\openssl.exe')) {
+                    $opensslCmd = '"C:\\Program Files\\Git\\usr\\bin\\openssl.exe"';
+                }
+            }
+
+            $res = shell_exec($opensslCmd . ' crl -inform DER -in ' . escapeshellarg($tmp) . ' -noout -text 2>&1');
+            if (!$res || stripos((string) $res, 'Certificate Revocation List') === false) {
+                $res = shell_exec($opensslCmd . ' crl -inform PEM -in ' . escapeshellarg($tmp) . ' -noout -text 2>&1');
+            }
+            @unlink($tmp);
+
+            if (is_array($res)) {
+                $res = implode("\n", $res);
+            }
+
+            if (!$res || !is_string($res)) {
+                continue;
+            }
+
+            $output = $res;
+
+            $expireTimestamp = 0;
+            if (preg_match('/Next Update:\s*(.+)$/im', $output, $m)) {
+                $parsedTime = strtotime(trim($m[1]));
+                if ($parsedTime !== false && $parsedTime > time()) {
+                    $expireTimestamp = $parsedTime;
+                }
+            }
+            if ($expireTimestamp <= time()) {
+                $expireTimestamp = time() + 21600; // fallback 6 hours
+            }
+
+            file_put_contents($cacheFile, $expireTimestamp . "\n" . $output);
         }
 
-        return (stripos($output, $serialHex) !== false) ? 'Revoked' : 'Good';
+        if (is_string($output)) {
+            return (stripos($output, $serialHex) !== false) ? 'Revoked' : 'Good';
+        }
     }
 
     return 'Not Enabled';
