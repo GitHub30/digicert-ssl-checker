@@ -184,7 +184,9 @@ function get_crl_status(array $params): string
  */
 function render_html(array $params): string
 {
-    return "<h1>bla bla</h1>";
+    return <<<EOF
+
+EOF;
 }
 
 header('Access-Control-Allow-Origin: *');
