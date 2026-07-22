@@ -4,6 +4,9 @@
 $host = $_GET['host'] ?? $argv[1] ?? 'example.com';
 
 $context = stream_context_create([
+    'socket' => [
+        'bindto' => '0.0.0.0:0', // IPv4
+    ],
     'ssl' => [
         'peer_name' => $host,
         'capture_peer_cert_chain' => true,
