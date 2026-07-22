@@ -93,20 +93,20 @@ function get_ocsp_origin(array $params): string
         . ' -url ' . escapeshellarg($ocspUrl)
         . ($ocspHost ? ' -header ' . escapeshellarg('Host=' . $ocspHost) : '')
         . ' -no_nonce -text 2>&1';
-    $out = shell_exec($cmd);
+    $output = shell_exec($cmd);
     @unlink($leafFile);
     @unlink($issuerFile);
 
-    if (!$out) {
+    if (!$output) {
         return '';
     }
-    if (preg_match('/:\s*good\b/i', $out)) {
+    if (preg_match('/:\s*good\b/i', $output)) {
         return 'Good';
     }
-    if (preg_match('/:\s*revoked\b/i', $out)) {
+    if (preg_match('/:\s*revoked\b/i', $output)) {
         return 'Revoked';
     }
-    if (preg_match('/:\s*unknown\b/i', $out)) {
+    if (preg_match('/:\s*unknown\b/i', $output)) {
         return 'Unknown';
     }
 
