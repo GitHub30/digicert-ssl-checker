@@ -23,4 +23,18 @@ foreach ($params['options']['ssl']['peer_certificate_chain'] as $key => $value) 
     $params['options']['ssl']['peer_certificate_chain'][$key] = openssl_x509_parse($value);
 }
 
+$data = "HEAD / HTTP/1.1\r\nHost: $host\r\nUser-Agent: Mozilla/5.0\r\nConnection: close\r\n\r\n";
+fwrite($fp, $data);
+while (!feof($fp)) {
+    $line = fgets($fp);
+    if ($line === false || rtrim($line, "\r\n") === '') {
+        break;
+    }
+
+    $header_line = trim($line);
+    if (stripos($header_line, 'Server:') === 0) {
+        $params['server'] = trim(substr($header_line, 7));
+    }
+}
+
 echo json_encode($params, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
