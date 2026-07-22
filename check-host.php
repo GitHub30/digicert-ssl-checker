@@ -139,7 +139,7 @@ function get_crl_status(array $params): string
         return 'Not Enabled';
     }
 
-    $maxBytes = 32 * 1024 * 1024; // 32MB limit
+    $maxBytes = 100 * 1024 * 1024; // 100MB limit
 
     foreach ($urls as $url) {
         $cacheFile = md5($url) . '.cache';
