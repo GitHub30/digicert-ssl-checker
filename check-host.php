@@ -1,0 +1,26 @@
+<?php
+
+$host = $_GET['host'] ?? 'example.com';
+
+$context = stream_context_create([
+    'ssl' => [
+        'capture_peer_cert_chain' => true,
+        'verify_peer' => false,
+        'verify_peer_name' => false,
+    ]
+]);
+
+$fp = stream_socket_client("ssl://{$host}:443", $error_code, $error_message, null, STREAM_CLIENT_CONNECT, $context);
+if (!$fp) {
+    echo "Connection failed: $error_message ($error_code)\n";
+    exit(1);
+}
+
+$params = stream_context_get_params($fp);
+$params['ip'] = stream_socket_get_name($fp, true);
+
+foreach ($params['options']['ssl']['peer_certificate_chain'] as $key => $value) {
+    $params['options']['ssl']['peer_certificate_chain'][$key] = openssl_x509_parse($value);
+}
+
+echo json_encode($params, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
