@@ -1,17 +1,18 @@
 <?php
 // Usage: php -d extension=openssl check-host.php
 
-$host = $_GET['host'] ?? 'example.com';
+$host = $_GET['host'] ?? $argv[1] ?? 'example.com';
 
 $context = stream_context_create([
     'ssl' => [
+        'peer_name' => $host,
         'capture_peer_cert_chain' => true,
         'verify_peer' => false,
         'verify_peer_name' => false,
     ]
 ]);
 
-$fp = stream_socket_client("ssl://{$host}:443", $error_code, $error_message, null, STREAM_CLIENT_CONNECT, $context);
+$fp = stream_socket_client("ssl://$host:443", $error_code, $error_message, null, STREAM_CLIENT_CONNECT, $context);
 if (!$fp) {
     echo "Connection failed: $error_message ($error_code)\n";
     exit(1);
@@ -38,4 +39,6 @@ while (!feof($fp)) {
     }
 }
 
-echo json_encode($params, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$json = json_encode($params, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+file_put_contents('cert.json', $json);
+echo $json;
