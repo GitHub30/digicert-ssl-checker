@@ -231,24 +231,9 @@ function sig_alg_display(string $sn): string
     return ($hashPos <= $algoPos) ? ($hash . '-' . $algo) : ($algo . '-' . $hash);
 }
 
-function get_signature_algorithm(string $pem, ?array $parsed = null): string
+function get_signature_algorithm(array $parsed): string
 {
-    if ($pem !== '') {
-        $tmp = tempnam(sys_get_temp_dir(), 'sig_');
-        if ($tmp !== false) {
-            file_put_contents($tmp, $pem);
-            $nullDevice = (stristr(PHP_OS, 'WIN')) ? 'NUL' : '/dev/null';
-            $out = shell_exec('openssl x509 -noout -text -in ' . escapeshellarg($tmp) . ' 2>' . $nullDevice);
-            @unlink($tmp);
-            if ($out && preg_match('/Signature Algorithm:\s*(\S+)/', $out, $m)) {
-                return $m[1];
-            }
-        }
-    }
-    if ($parsed) {
-        return $parsed['signatureTypeLN'] ?? $parsed['signatureTypeSN'] ?? '';
-    }
-    return '';
+    return $parsed['signatureTypeLN'] ?? $parsed['signatureTypeSN'] ?? '';
 }
 
 function get_san_list(array $extensions): array
@@ -348,7 +333,7 @@ function cert_info_from_parsed(array $parsed): array
         'serial_hex'  => strtoupper($serialHex),
         'sha1'        => $pem !== '' ? strtoupper((string) openssl_x509_fingerprint($pem, 'sha1')) : '',
         'key_bits'    => $keyBits,
-        'sig_alg'     => get_signature_algorithm($pem, $parsed),
+        'sig_alg'     => get_signature_algorithm($parsed),
         'extensions'  => $parsed['extensions'] ?? [],
         'self_signed' => ($parsed['subject'] ?? null) === ($parsed['issuer'] ?? null),
     ];
