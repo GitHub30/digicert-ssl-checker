@@ -140,13 +140,9 @@ function get_crl_status(array $params): string
     }
 
     $maxBytes = 8 * 1024 * 1024; // 8MB limit
-    $cacheDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'crl_cache';
-    if (!is_dir($cacheDir)) {
-        @mkdir($cacheDir, 0755, true);
-    }
 
     foreach ($urls as $url) {
-        $cacheFile = $cacheDir . DIRECTORY_SEPARATOR . md5($url) . '.cache';
+        $cacheFile = md5($url) . '.cache';
         $output = false;
 
         if (file_exists($cacheFile)) {
@@ -224,7 +220,7 @@ function get_crl_status(array $params): string
             file_put_contents($cacheFile, $expireTimestamp . "\n" . $output);
         }
 
-        if (is_string($output)) {
+        if ($output) {
             return (stripos($output, $serialHex) !== false) ? 'Revoked' : 'Good';
         }
     }
