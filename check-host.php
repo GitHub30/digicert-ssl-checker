@@ -24,7 +24,7 @@ if (!$fp) {
 $params = stream_context_get_params($fp);
 $name = stream_socket_get_name($fp, true);
 if ($name) {
-    $params['ip'] = explode(":", $name)[0];
+    $params['ip'] = explode(':', $name)[0];
 }
 
 foreach ($params['options']['ssl']['peer_certificate_chain'] as $key => $value) {
