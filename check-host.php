@@ -25,6 +25,21 @@ function get_server_header($fp, string $host): ?string
     return null;
 }
 
+function get_ocsp_staple($params)
+{
+    return '';
+}
+
+function get_ocsp_origin($params)
+{
+    return '';
+}
+
+function get_crl_status($params)
+{
+    return '';
+}
+
 /**
  * @param array $params
  * @return string
@@ -68,6 +83,9 @@ foreach ($params['options']['ssl']['peer_certificate_chain'] as $key => $value) 
 }
 
 $params['HTTP Server Header'] = get_server_header($fp, $host);
+$params['ocsp_staple'] = get_ocsp_staple($params);
+$params['ocsp_origin'] = get_ocsp_origin($params);
+$params['crl_status'] = get_crl_status($params);
 $params['html'] = render_html($params);
 
 if ($format === 'json') {
