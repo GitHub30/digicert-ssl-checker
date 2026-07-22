@@ -35,7 +35,7 @@ while (!feof($fp)) {
 
     $header_line = trim($line);
     if (stripos($header_line, 'Server:') === 0) {
-        $params['server'] = trim(substr($header_line, 7));
+        $params['HTTP Server Header'] = trim(substr($header_line, 7));
     }
 }
 
