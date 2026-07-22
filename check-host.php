@@ -42,6 +42,6 @@ while (!feof($fp)) {
     }
 }
 
-$json = json_encode($params, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$json = json_encode($params, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 file_put_contents('cert.json', $json);
 echo $json;
