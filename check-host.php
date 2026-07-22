@@ -67,7 +67,7 @@ function get_ocsp_origin(array $params): string
     $leaf = $params['options']['ssl']['peer_certificate_chain'][0] ?? null;
     // https://letsencrypt.org/2024/12/05/ending-ocsp
     if (!$leaf || $leaf['issuer']['O'] === "Let's Encrypt") {
-        return 'Not Enabled';
+        return '';
     }
 
     $issuer = $params['options']['ssl']['peer_certificate_chain'][1] ?? null;
@@ -178,15 +178,322 @@ function get_crl_status(array $params): string
     return 'Not Enabled';
 }
 
+function h($s): string
+{
+    return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
+}
+
+function sig_alg_display(string $sn): string
+{
+    if ($sn === '') {
+        return '';
+    }
+    if (stripos($sn, 'ed25519') !== false) {
+        return 'ED25519';
+    }
+    if (stripos($sn, 'ed448') !== false) {
+        return 'ED448';
+    }
+
+    $hash = '';
+    $hashPos = null;
+    if (preg_match('/sha(1|224|256|384|512)/i', $sn, $m, PREG_OFFSET_CAPTURE)) {
+        $hash = 'SHA' . $m[1][0];
+        $hashPos = $m[0][1];
+    }
+
+    $algo = '';
+    $algoPos = null;
+    if (stripos($sn, 'pss') !== false && preg_match('/rsa/i', $sn, $m2, PREG_OFFSET_CAPTURE)) {
+        $algo = 'RSA-PSS';
+        $algoPos = $m2[0][1];
+    } elseif (preg_match('/ecdsa/i', $sn, $m2, PREG_OFFSET_CAPTURE)) {
+        $algo = 'ECDSA';
+        $algoPos = $m2[0][1];
+    } elseif (preg_match('/rsa/i', $sn, $m2, PREG_OFFSET_CAPTURE)) {
+        $algo = 'RSA';
+        $algoPos = $m2[0][1];
+    } elseif (preg_match('/dsa/i', $sn, $m2, PREG_OFFSET_CAPTURE)) {
+        $algo = 'DSA';
+        $algoPos = $m2[0][1];
+    }
+
+    if ($hash === '' && $algo === '') {
+        return strtoupper($sn);
+    }
+    if ($hash === '') {
+        return $algo;
+    }
+    if ($algo === '') {
+        return $hash;
+    }
+
+    return ($hashPos <= $algoPos) ? ($hash . '-' . $algo) : ($algo . '-' . $hash);
+}
+
+function get_signature_algorithm(string $pem, ?array $parsed = null): string
+{
+    if ($pem !== '') {
+        $tmp = tempnam(sys_get_temp_dir(), 'sig_');
+        if ($tmp !== false) {
+            file_put_contents($tmp, $pem);
+            $nullDevice = (stristr(PHP_OS, 'WIN')) ? 'NUL' : '/dev/null';
+            $out = shell_exec('openssl x509 -noout -text -in ' . escapeshellarg($tmp) . ' 2>' . $nullDevice);
+            @unlink($tmp);
+            if ($out && preg_match('/Signature Algorithm:\s*(\S+)/', $out, $m)) {
+                return $m[1];
+            }
+        }
+    }
+    if ($parsed) {
+        return $parsed['signatureTypeLN'] ?? $parsed['signatureTypeSN'] ?? '';
+    }
+    return '';
+}
+
+function get_san_list(array $extensions): array
+{
+    $sans = [];
+    if (!empty($extensions['subjectAltName'])) {
+        foreach (explode(',', $extensions['subjectAltName']) as $part) {
+            $part = trim($part);
+            if (stripos($part, 'DNS:') === 0) {
+                $sans[] = substr($part, 4);
+            }
+        }
+    }
+    return $sans;
+}
+
+function name_matches(string $host, string $pattern): bool
+{
+    $host = strtolower($host);
+    $pattern = strtolower($pattern);
+    if ($pattern === $host) {
+        return true;
+    }
+    if (strpos($pattern, '*.') === 0) {
+        $suffix = substr($pattern, 1);
+        if (substr($host, -strlen($suffix)) === $suffix && substr_count($host, '.') === substr_count($pattern, '.')) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function host_matches(string $host, string $cn, array $sans): bool
+{
+    $names = $sans;
+    if ($cn !== '' && !in_array($cn, $names, true)) {
+        $names[] = $cn;
+    }
+    foreach ($names as $name) {
+        if (name_matches($host, $name)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function format_serial_hex(string $hex, bool $preserveRaw): string
+{
+    if ($preserveRaw) {
+        return $hex;
+    }
+    $stripped = ltrim($hex, '0');
+    return $stripped === '' ? '0' : $stripped;
+}
+
+function raw_bit_length(?string $bin): int
+{
+    if ($bin === null) {
+        return 0;
+    }
+    $bin = ltrim($bin, "\x00");
+    if ($bin === '') {
+        return 0;
+    }
+    $len = strlen($bin) * 8;
+    $firstByte = ord($bin[0]);
+    $mask = 0x80;
+    while ($mask > 0 && ($firstByte & $mask) === 0) {
+        $len--;
+        $mask >>= 1;
+    }
+    return $len;
+}
+
+function cert_info_from_parsed(array $parsed): array
+{
+    $pem = $parsed['pem'] ?? '';
+    $pubkey = $pem !== '' ? openssl_pkey_get_public($pem) : false;
+    $keyDetails = $pubkey ? openssl_pkey_get_details($pubkey) : null;
+    $serialHex = $parsed['serialNumberHex'] ?? (isset($parsed['serialNumber']) ? strtoupper(dechex((int) $parsed['serialNumber'])) : '');
+
+    $keyBits = $keyDetails['bits'] ?? '';
+    if ($keyDetails && $keyDetails['type'] === OPENSSL_KEYTYPE_EC && !empty($keyDetails['ec']['x'])) {
+        $keyBits = raw_bit_length($keyDetails['ec']['x']);
+    }
+
+    return [
+        'pem'         => $pem,
+        'subject_cn'  => $parsed['subject']['CN'] ?? '',
+        'subject_o'   => $parsed['subject']['O'] ?? '',
+        'subject_l'   => $parsed['subject']['L'] ?? '',
+        'subject_st'  => $parsed['subject']['ST'] ?? '',
+        'subject_c'   => $parsed['subject']['C'] ?? '',
+        'issuer_cn'   => $parsed['issuer']['CN'] ?? '',
+        'not_before'  => $parsed['validFrom_time_t'] ?? 0,
+        'not_after'   => $parsed['validTo_time_t'] ?? 0,
+        'serial_hex'  => strtoupper($serialHex),
+        'sha1'        => $pem !== '' ? strtoupper((string) openssl_x509_fingerprint($pem, 'sha1')) : '',
+        'key_bits'    => $keyBits,
+        'sig_alg'     => get_signature_algorithm($pem, $parsed),
+        'extensions'  => $parsed['extensions'] ?? [],
+        'self_signed' => ($parsed['subject'] ?? null) === ($parsed['issuer'] ?? null),
+    ];
+}
+
 /**
  * @param array $params
  * @return string
  */
 function render_html(array $params): string
 {
-    return <<<EOF
+    $host = $params['options']['ssl']['peer_name'] ?? '';
+    $hostEsc = h($host);
+    $ip = $params['ip'] ?? '';
 
-EOF;
+    $html = '';
+
+    // 1. DNS resolution
+    if ($ip !== '') {
+        $html .= '<h2 class="ok">DNS resolves ' . $hostEsc . ' to ' . h($ip) . '</h2>';
+    }
+
+    // 2. HTTP Server header
+    $serverHeader = $params['HTTP Server Header'] ?? null;
+    if ($serverHeader !== null && $serverHeader !== '') {
+        $html .= '<p>HTTP Server Header: ' . h($serverHeader) . '</p>';
+    }
+
+    // 3. Certificate chain & details
+    $chain = $params['options']['ssl']['peer_certificate_chain'] ?? [];
+    if (empty($chain)) {
+        return $html;
+    }
+
+    $certs = array_map('cert_info_from_parsed', $chain);
+    $leaf = $certs[0];
+    $sans = get_san_list($leaf['extensions']);
+    $sanDisplay = !empty($sans) ? implode(', ', $sans) : $leaf['subject_cn'];
+
+    $hasDigicertBrand = false;
+    foreach ($certs as $info) {
+        if (stripos($info['subject_cn'], 'digicert') !== false) {
+            $hasDigicertBrand = true;
+            break;
+        }
+    }
+
+    $html .= '<div id="CertDetails">';
+    $html .= '<p>Common Name = ' . h($leaf['subject_cn']) . '</p>';
+    if ($leaf['subject_o'] !== '') {
+        $html .= '<p>Organization = ' . h($leaf['subject_o']) . '</p>';
+    }
+    if ($leaf['subject_l'] !== '') {
+        $html .= '<p>City/Locality = ' . h($leaf['subject_l']) . '</p>';
+    }
+    if ($leaf['subject_st'] !== '') {
+        $html .= '<p>State/Province = ' . h($leaf['subject_st']) . '</p>';
+    }
+    if ($leaf['subject_c'] !== '') {
+        $html .= '<p>Country = ' . h($leaf['subject_c']) . '</p>';
+    }
+    $html .= '<p>Subject Alternative Names = ' . h($sanDisplay) . '</p>';
+    $html .= '<p>Issuer = ' . h($leaf['issuer_cn']) . '</p>';
+    $html .= '<p>Serial Number = ' . h(format_serial_hex($leaf['serial_hex'], $hasDigicertBrand)) . '</p>';
+    $html .= '<p>SHA1 Thumbprint = ' . h($leaf['sha1']) . '</p>';
+    $html .= '<p>Key Length = ' . h($leaf['key_bits']) . '</p>';
+    $html .= '<p>Signature algorithm = ' . h(sig_alg_display($leaf['sig_alg'])) . '</p>';
+    $html .= '<p>Secure Renegotiation: </p>';
+    $html .= '</div>' . "\n";
+
+    // 4. Revocation status (OCSP staple / OCSP origin / CRL)
+    $staple = $params['ocsp_staple'] ?? 'Not Enabled';
+    $origin = $params['ocsp_origin'] ?? '';
+    $crl = $params['crl_status'] ?? 'Not Enabled';
+
+    $revoked = (stripos($staple, 'revoked') !== false)
+        || (stripos($origin, 'revoked') !== false)
+        || (stripos($crl, 'revoked') !== false);
+
+    if ($origin === '') {
+        $html .= '<h2 class="warning">TLS Certificate status cannot be validated</h2>';
+    } elseif ($revoked) {
+        $html .= '<h2 class="error">TLS Certificate has been revoked</h2>';
+    } else {
+        $html .= '<h2 class="ok">TLS Certificate has not been revoked</h2>';
+    }
+    $html .= '<table>';
+    $html .= '<tr><td>OCSP Staple: </td><td>' . h($staple) . '</td></tr>';
+    $html .= '<tr><td>OCSP Origin: </td><td>' . h($origin) . '</td></tr>';
+    $html .= '<tr><td>CRL Status: </td><td>' . h($crl) . '</td></tr>';
+    $html .= '</table><br />';
+
+    // 5. Expiration
+    $now = time();
+    $daysLeft = (int) floor(($leaf['not_after'] - $now) / 86400);
+    $expired = $daysLeft < 0;
+    $expDateStr = date('F j, Y', $leaf['not_after']);
+
+    if ($expired) {
+        $days = abs($daysLeft);
+        $expMsg = 'The certificate expired ' . $expDateStr . ' (' . $days . ' day' . ($days === 1 ? '' : 's') . ' ago)';
+    } else {
+        $expMsg = 'The certificate expires ' . $expDateStr . ' (' . $daysLeft . ' day' . ($daysLeft === 1 ? '' : 's') . ' from today)';
+    }
+
+    $html .= '<h2 class="' . ($expired ? 'error' : 'ok') . '">TLS Certificate expiration</h2>';
+    $html .= '<p>' . $expMsg . '</p>';
+
+    // 6. Certificate name match
+    $nameOk = host_matches($host, $leaf['subject_cn'], $sans);
+    $html .= '<h2 class="' . ($nameOk ? 'ok' : 'error') . '">Certificate Name ' . ($nameOk ? 'matches' : 'does not match') . ' ' . $hostEsc . '</h3>';
+
+    // 7. Certificate chain table
+    $html .= '<div id="chain"><table>' . "\n";
+    $n = count($certs);
+    foreach ($certs as $i => $info) {
+        $brand = (stripos($info['subject_cn'], 'digicert') !== false) ? 'digicert' : 'generic';
+        $icon = $brand . '-' . ($i === 0 ? 'server-cert.gif' : 'intermediate-cert.gif');
+        $validFrom = date('d/M/Y', $info['not_before']);
+        $validTo = date('d/M/Y', $info['not_after']);
+
+        $html .= '<tr><td rowspan="4" style="text-align: center;"><img src="/images/icons/' . $icon . '" style="border: 0"/></td>'
+            . '<tr><td>Subject</td><td>' . h($info['subject_cn']) . '</td></tr>'
+            . '<tr><td colspan="2">Valid from ' . $validFrom . ' to ' . $validTo . '</td></tr>'
+            . '<tr><td>Issuer</td><td>' . h($info['issuer_cn']) . '</td></tr>';
+
+        if ($i < $n - 1) {
+            $html .= '<tr><td style="text-align: center"><img src="/images/icons/chain-good.gif" /></td><td colspan="2">&nbsp;</td></tr>';
+        }
+        $html .= "\n";
+    }
+    $html .= '</table></div>';
+
+    // 8. Overall result
+    $allOk = !$revoked && !$expired && $nameOk;
+
+    if ($allOk) {
+        $html .= '<h2 class="ok" style="margin-top:18px;">TLS Certificate is correctly installed</h2>' . "\n";
+        $html .= '<p>Congratulations! This certificate is correctly installed.</p>' . "\n";
+    } else {
+        $html .= '<h2 class="error" style="margin-top:18px;">TLS Certificate is NOT correctly installed</h2>' . "\n";
+        $html .= '<p>Please review the issues listed above.</p>' . "\n";
+    }
+
+    return $html;
 }
 
 header('Access-Control-Allow-Origin: *');
