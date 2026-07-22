@@ -25,13 +25,91 @@ function get_server_header($fp, string $host): ?string
     return null;
 }
 
-function get_ocsp_staple($params)
+function get_ocsp_url(?string $aia): ?string
 {
-    return '';
+    if (!$aia) {
+        return null;
+    }
+    foreach (preg_split('/\r?\n/', $aia) as $line) {
+        if (stripos($line, 'OCSP') !== false && preg_match('/URI:(\S+)/i', $line, $m)) {
+            return $m[1];
+        }
+    }
+    return null;
 }
 
-function get_ocsp_origin($params)
+function get_ocsp_staple(array $params): string
 {
+    $host = $params['options']['ssl']['peer_name'] ?? '';
+    if ($host === '') {
+        return 'Not Enabled';
+    }
+
+    $leaf = $params['options']['ssl']['peer_certificate_chain'][0] ?? null;
+    // https://letsencrypt.org/2024/12/05/ending-ocsp
+    if (!$leaf || $leaf['issuer']['O'] === "Let's Encrypt") {
+        return 'Not Enabled';
+    }
+
+    $cmd = 'echo -n | openssl s_client -connect ' . escapeshellarg("$host:443") . ' -servername ' . escapeshellarg($host) . ' -status';
+    $out = shell_exec($cmd);
+    if (!$out) {
+        return 'Not Enabled';
+    }
+    if (stripos($out, 'OCSP Response Status: successful') !== false && preg_match('/Cert Status:\s*(\w+)/i', $out, $m)) {
+        return ucfirst(strtolower($m[1]));
+    }
+    return 'Not Enabled';
+}
+
+function get_ocsp_origin(array $params): string
+{
+    $leaf = $params['options']['ssl']['peer_certificate_chain'][0] ?? null;
+    // https://letsencrypt.org/2024/12/05/ending-ocsp
+    if (!$leaf || $leaf['issuer']['O'] === "Let's Encrypt") {
+        return 'Not Enabled';
+    }
+
+    $issuer = $params['options']['ssl']['peer_certificate_chain'][1] ?? null;
+
+    $leafPem = $leaf['pem'] ?? null;
+    $issuerPem = $issuer['pem'] ?? null;
+
+    $aia = $leaf['extensions']['authorityInfoAccess'] ?? '';
+    $ocspUrl = get_ocsp_url($aia);
+
+    if (!$ocspUrl || !$leafPem || !$issuerPem) {
+        return '';
+    }
+
+    $leafFile = tempnam(sys_get_temp_dir(), 'leaf_');
+    $issuerFile = tempnam(sys_get_temp_dir(), 'issuer_');
+    file_put_contents($leafFile, $leafPem);
+    file_put_contents($issuerFile, $issuerPem);
+
+    $ocspHost = parse_url($ocspUrl, PHP_URL_HOST);
+    $cmd = 'openssl ocsp -issuer ' . escapeshellarg($issuerFile)
+        . ' -cert ' . escapeshellarg($leafFile)
+        . ' -url ' . escapeshellarg($ocspUrl)
+        . ($ocspHost ? ' -header ' . escapeshellarg('Host=' . $ocspHost) : '')
+        . ' -no_nonce -text 2>&1';
+    $out = shell_exec($cmd);
+    @unlink($leafFile);
+    @unlink($issuerFile);
+
+    if (!$out) {
+        return '';
+    }
+    if (preg_match('/:\s*good\b/i', $out)) {
+        return 'Good';
+    }
+    if (preg_match('/:\s*revoked\b/i', $out)) {
+        return 'Revoked';
+    }
+    if (preg_match('/:\s*unknown\b/i', $out)) {
+        return 'Unknown';
+    }
+
     return '';
 }
 
@@ -139,7 +217,11 @@ if ($name) {
 }
 
 foreach ($params['options']['ssl']['peer_certificate_chain'] as $key => $value) {
-    $params['options']['ssl']['peer_certificate_chain'][$key] = openssl_x509_parse($value);
+    $parsed = openssl_x509_parse($value);
+    if ($parsed && openssl_x509_export($value, $pem)) {
+        $parsed['pem'] = $pem;
+    }
+    $params['options']['ssl']['peer_certificate_chain'][$key] = $parsed;
 }
 
 $params['HTTP Server Header'] = get_server_header($fp, $host);
