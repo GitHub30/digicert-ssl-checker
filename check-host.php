@@ -232,7 +232,7 @@ function get_crl_status(array $params): string
     return 'Not Enabled';
 }
 
-function h($s): string
+function h(string|int|float|null $s): string
 {
     return htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
 }
