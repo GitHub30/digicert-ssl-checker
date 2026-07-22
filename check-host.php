@@ -418,6 +418,13 @@ function render_html(array $params): string
         return $html;
     }
 
+    if (strpos($chain[0]['issuer']['O'], 'DigiCert') !== false) {
+        $html .= '<h2 class="ok">TLS Certificate</h2>';
+    } else {
+        $html .= '<h2 class="warning" style="margin-top:18px;">The Certificate is not issued by DigiCert, GeoTrust, Thawte, or RapidSSL</h2>';
+        $html .= '<p>Make sure the website you want to check is secured by a certificate from one of our product lines.</p>';
+    }
+
     $certs = array_map('cert_info_from_parsed', $chain);
     $leaf = $certs[0];
     $sans = get_san_list($leaf['extensions']);
@@ -478,7 +485,7 @@ function render_html(array $params): string
 
     // 5. Expiration
     $now = time();
-    $daysLeft = (int) floor(($leaf['not_after'] - $now) / 86400);
+    $daysLeft = (int) floor(($leaf['not_after'] - $now) / 86400) - 1;
     $expired = $daysLeft < 0;
     $expDateStr = date('F j, Y', $leaf['not_after']);
 
