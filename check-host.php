@@ -34,6 +34,8 @@ function render_html(array $params): string
     return "<h1>bla bla</h1>";
 }
 
+header('Access-Control-Allow-Origin: *');
+
 $host = $_GET['host'] ?? $argv[1] ?? 'example.com';
 $format = $_GET['format'] ?? $argv[2] ?? 'html';
 
