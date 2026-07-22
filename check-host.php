@@ -211,8 +211,8 @@ function get_crl_status(array $params): string
             $output = $res;
 
             $expireTimestamp = 0;
-            if (preg_match('/Next Update:\s*(.+)$/im', $output, $m)) {
-                $parsedTime = strtotime(trim($m[1]));
+            if (preg_match('/Next Update:\s*(.+)$/im', $output, $matches)) {
+                $parsedTime = strtotime(trim($matches[1]));
                 if ($parsedTime !== false && $parsedTime > time()) {
                     $expireTimestamp = $parsedTime;
                 }
