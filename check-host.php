@@ -35,9 +35,69 @@ function get_ocsp_origin($params)
     return '';
 }
 
-function get_crl_status($params)
+function get_crl_status(array $params): string
 {
-    return '';
+    $leaf = $params['options']['ssl']['peer_certificate_chain'][0] ?? null;
+    if (!$leaf) {
+        return 'Not Enabled';
+    }
+
+    $serialHex = $leaf['serialNumberHex'] ?? (isset($leaf['serialNumber']) ? strtoupper(dechex((int) $leaf['serialNumber'])) : '');
+    if ($serialHex === '') {
+        return 'Not Enabled';
+    }
+
+    $crlExt = $leaf['extensions']['crlDistributionPoints'] ?? '';
+    $urls = [];
+    if ($crlExt && preg_match_all('/URI:(\S+)/i', $crlExt, $m)) {
+        $urls = $m[1];
+    }
+
+    if (empty($urls)) {
+        return 'Not Enabled';
+    }
+
+    $maxBytes = 8 * 1024 * 1024; // 8MB limit
+
+    foreach ($urls as $url) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS      => 3,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0',
+        ]);
+        $data = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+
+        if ($data === false || $httpCode !== 200 || strlen($data) >= $maxBytes) {
+            continue;
+        }
+
+        $tmp = tempnam(sys_get_temp_dir(), 'crl_');
+        if ($tmp === false) {
+            continue;
+        }
+        file_put_contents($tmp, $data);
+
+        $output = shell_exec('openssl crl -inform DER -in ' . escapeshellarg($tmp) . ' -noout -text');
+        if (!$output) {
+            $output = shell_exec('openssl crl -inform PEM -in ' . escapeshellarg($tmp) . ' -noout -text');
+        }
+        @unlink($tmp);
+
+        if (!$output) {
+            continue;
+        }
+
+        return (stripos($output, $serialHex) !== false) ? 'Revoked' : 'Good';
+    }
+
+    return 'Not Enabled';
 }
 
 /**
