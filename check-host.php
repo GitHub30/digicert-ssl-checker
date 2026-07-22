@@ -1,7 +1,41 @@
 <?php
 // Usage: php -d extension=openssl check-host.php
 
+/**
+ * @param resource $fp
+ * @param string $host
+ * @return string|null
+ */
+function get_server_header($fp, string $host): ?string
+{
+    $data = "HEAD / HTTP/1.1\r\nHost: $host\r\nUser-Agent: Mozilla/5.0\r\nConnection: close\r\n\r\n";
+    fwrite($fp, $data);
+    while (!feof($fp)) {
+        $line = fgets($fp);
+        if ($line === false || rtrim($line, "\r\n") === '') {
+            break;
+        }
+
+        $header_line = trim($line);
+        if (stripos($header_line, 'Server:') === 0) {
+            return trim(substr($header_line, 7));
+        }
+    }
+
+    return null;
+}
+
+/**
+ * @param array $params
+ * @return string
+ */
+function render_html(array $params): string
+{
+    return "<h1>bla bla</h1>";
+}
+
 $host = $_GET['host'] ?? $argv[1] ?? 'example.com';
+$format = $_GET['format'] ?? $argv[2] ?? 'html';
 
 $context = stream_context_create([
     'socket' => [
@@ -12,7 +46,7 @@ $context = stream_context_create([
         'capture_peer_cert_chain' => true,
         'verify_peer' => false,
         'verify_peer_name' => false,
-    ]
+    ],
 ]);
 
 $fp = stream_socket_client("ssl://$host:443", $error_code, $error_message, null, STREAM_CLIENT_CONNECT, $context);
@@ -31,20 +65,13 @@ foreach ($params['options']['ssl']['peer_certificate_chain'] as $key => $value) 
     $params['options']['ssl']['peer_certificate_chain'][$key] = openssl_x509_parse($value);
 }
 
-$data = "HEAD / HTTP/1.1\r\nHost: $host\r\nUser-Agent: Mozilla/5.0\r\nConnection: close\r\n\r\n";
-fwrite($fp, $data);
-while (!feof($fp)) {
-    $line = fgets($fp);
-    if ($line === false || rtrim($line, "\r\n") === '') {
-        break;
-    }
+$params['HTTP Server Header'] = get_server_header($fp, $host);
+$params['html'] = render_html($params);
 
-    $header_line = trim($line);
-    if (stripos($header_line, 'Server:') === 0) {
-        $params['HTTP Server Header'] = trim(substr($header_line, 7));
-    }
+if ($format === 'json') {
+    header('Content-Type: application/json');
+    echo json_encode($params, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+} else {
+    header('Content-Type: text/html');
+    echo $params['html'];
 }
-
-$json = json_encode($params, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-file_put_contents('cert.json', $json);
-echo $json;
