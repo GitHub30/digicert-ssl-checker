@@ -51,7 +51,7 @@ function get_ocsp_staple(array $params): string
         return 'Not Enabled';
     }
 
-    $cmd = 'echo -n | openssl s_client -connect ' . escapeshellarg("$host:443") . ' -servername ' . escapeshellarg($host) . ' -status';
+    $cmd = 'echo -n | openssl s_client -connect ' . escapeshellarg("$host:443") . ' -servername ' . escapeshellarg($host) . ' -status 2>&1';
     $out = shell_exec($cmd);
     if (!$out) {
         return 'Not Enabled';
