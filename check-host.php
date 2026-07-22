@@ -1,5 +1,5 @@
 <?php
-// Usage: php -d extension=openssl check-host.php example.com json
+// Usage: php -d extension=openssl check-host.php letsencrypt.org json
 
 /**
  * @param resource $fp
@@ -151,6 +151,7 @@ $params['html'] = render_html($params);
 if ($format === 'json') {
     header('Content-Type: application/json');
     echo json_encode($params, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    file_put_contents('cert.json', json_encode($params, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 } else {
     header('Content-Type: text/html');
     echo $params['html'];
