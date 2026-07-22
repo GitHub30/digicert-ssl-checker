@@ -1,5 +1,5 @@
 <?php
-// Usage: php -d extension=openssl check-host.php
+// Usage: php -d extension=openssl check-host.php example.com json
 
 /**
  * @param resource $fp
