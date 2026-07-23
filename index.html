@@ -119,8 +119,9 @@
     <div id="results"></div>
     <script>
         const host = new URL(location).searchParams.get('host')
+        const url = new URL(location).searchParams.get('url') ?? 'digicert.8j.workers.dev/'
         if (host) {
-            fetch('https://digicert.8j.workers.dev/?host=' + host)
+            fetch(`https://${url}?host=${host}`)
                 .then(r => r.text())
                 .then(html => results.innerHTML = html)
         }
